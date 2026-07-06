@@ -104,16 +104,24 @@ overview（遠看）  ──點階段/Enter──►  scene（近看）
 
 ---
 
-## 8. 部署（GitHub Pages）
+## 8. 部署（GitHub Pages）— 已上線
 
-一遊戲一 repo 一 Pages（凱凱的統一模式）。
+- **線上網址**：https://sancola1219-collab.github.io/human-evolution-history/
+- **repo**：`sancola1219-collab/human-evolution-history`（public）
+- **部署分支**：⚠️ **master**（不是 main！本機 `git init` 預設 master，Pages 也設在 master/root）。
+
+改版部署（每次）：
+```powershell
+# 1) 改完先驗證
+node tools/validate.js                       # 全綠
+# 2) index.html 四個 ?v=N 一起 +1（§6）
+# 3) 推上去，Pages 自動 rebuild（約 1 分鐘）
+git add -A
+git -c commit.gpgsign=false commit -m "..."
+git push                                     # 推 master
 ```
-git init && git add -A && git commit -m "..."
-gh repo create 人類進化史 --public --source=. --push   # gh 路徑見下
-# GitHub → Settings → Pages → Deploy from branch: main / root
-```
-- `gh` 不在 PATH，需用全路徑（帳號 sancola1219-collab）。實際路徑見使用者記憶 `env-github-cli`。
-- 部署後每次改版：`git add -A && commit && push`，並記得 §6 快取號 +1。
+- `gh` CLI 不在 PATH，需全路徑 `& "C:\Program Files\GitHub CLI\gh.exe" ...`（帳號 sancola1219-collab），細節見使用者記憶 `env-github-cli`。
+- 查 Pages 狀態：`gh api repos/sancola1219-collab/human-evolution-history/pages --jq .status`（`built` 即完成）。
 
 ---
 
