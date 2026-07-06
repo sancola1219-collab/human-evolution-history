@@ -12,3 +12,4 @@
 - [canvas-replaced-element-sizing](canvas-replaced-element-sizing.md) — canvas 是替換元素，靠外層 div 撐開，別用 height:auto
 - [figure-head-double-translate](figure-head-double-translate.md) — 相對座標別重複 translate，位置類 bug 要看 PNG
 - [testing-headless-canvas](testing-headless-canvas.md) — 持續 rAF + 背景分頁會讓截圖失效，改用離屏 canvas 手動推幀
+- [limb-shading-strokes-over-arc-paths](limb-shading-strokes-over-arc-paths.md) — 畫管狀物用圓頭粗線+描邊，別手拼 arc 封口路徑（會冒白圈）
