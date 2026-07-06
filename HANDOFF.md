@@ -108,20 +108,27 @@ overview（遠看）  ──點階段/Enter──►  scene（近看）
 
 - **線上網址**：https://sancola1219-collab.github.io/human-evolution-history/
 - **repo**：`sancola1219-collab/human-evolution-history`（public）
-- **部署分支**：⚠️ **master**（不是 main！本機 `git init` 預設 master，Pages 也設在 master/root）。
+- **部署分支**：⚠️ **master**（不是 main！本機 `git init` 預設 master）。
+- **部署方式**：⚠️ **GitHub Actions**（`.github/workflows/pages.yml`），**不是**舊版 Jekyll builder。
+  - 為什麼換：上線時舊版 legacy builder **卡死**（build 停在 `building` 超過 25 分鐘、無錯誤訊息）。改用 Actions 上傳整個目錄部署，秒級完成、可靠。Pages 的 `build_type` 已設為 `workflow`。
+  - 有 `.nojekyll`，靜態檔原樣服務、不經 Jekyll。
 
 改版部署（每次）：
 ```powershell
 # 1) 改完先驗證
 node tools/validate.js                       # 全綠
 # 2) index.html 四個 ?v=N 一起 +1（§6）
-# 3) 推上去，Pages 自動 rebuild（約 1 分鐘）
+# 3) 推上去，push 到 master 會自動觸發 Actions 部署（約 30 秒）
 git add -A
 git -c commit.gpgsign=false commit -m "..."
-git push                                     # 推 master
+git push                                     # 推 master → Actions 自動部署
 ```
-- `gh` CLI 不在 PATH，需全路徑 `& "C:\Program Files\GitHub CLI\gh.exe" ...`（帳號 sancola1219-collab），細節見使用者記憶 `env-github-cli`。
-- 查 Pages 狀態：`gh api repos/sancola1219-collab/human-evolution-history/pages --jq .status`（`built` 即完成）。
+- `gh` CLI 不在 PATH，需全路徑 `& "C:\Program Files\GitHub CLI\gh.exe" ...`（帳號 sancola1219-collab，有 workflow scope），細節見使用者記憶 `env-github-cli`。
+- 查部署狀態（看最新 Actions run）：
+  `gh api "repos/sancola1219-collab/human-evolution-history/actions/runs?per_page=1" --jq '.workflow_runs[0].status'`
+- 若 push 沒觸發或要手動重跑：
+  `gh api -X POST "repos/sancola1219-collab/human-evolution-history/actions/workflows/pages.yml/dispatches" -f ref=master`
+- ⚠️ CDN 有時會多快取幾分鐘舊 `index.html`；驗證時用 `?cb=亂數` 破快取，或直接抓 `scenes.js` 看內容。
 
 ---
 
