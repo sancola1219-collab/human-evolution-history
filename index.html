@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>人類進化史 · 互動教學模擬</title>
+  <meta name="description" content="從 700 萬年前到文明——可遠看全時間軸、近看寫實場景的人類演化互動教材。" />
+  <link rel="stylesheet" href="styles.css?v=3" />
+</head>
+<body>
+  <!-- 頂部標題列 -->
+  <header id="topbar">
+    <div class="brand">🦴 人類進化史 <span>互動教學模擬</span></div>
+    <div class="progress"><div id="progressBar"></div></div>
+  </header>
+
+  <!-- 遠看：時間軸總覽 -->
+  <section id="overview" class="mode active">
+    <div class="overview-hero">
+      <h1>700 萬年，一條路走成了「人」</h1>
+      <p>拖曳時間軸左右瀏覽，滾輪縮放。點任何一個階段，走進那個時代的寫實現場。</p>
+    </div>
+    <div class="timeline-wrap"><canvas id="timeline"></canvas></div>
+    <div class="legend">
+      <span><i class="dot cur"></i> 目前</span>
+      <span><i class="dot vis"></i> 已探索</span>
+      <span><i class="dot new"></i> 未探索</span>
+    </div>
+  </section>
+
+  <!-- 近看：寫實場景 + 教學面板 -->
+  <section id="sceneMode" class="mode">
+    <canvas id="scene"></canvas>
+
+    <button id="back" class="ghost-btn" title="返回時間軸（Esc）">◀ 時間軸</button>
+
+    <div class="nav-arrows">
+      <button id="prev" title="上一階段（←）">‹</button>
+      <button id="next" title="下一階段（→）">›</button>
+    </div>
+
+    <div class="zoom-ctrl">
+      <span title="遠看">🏞️</span>
+      <input id="zoom" type="range" min="1" max="3" step="0.01" value="1" />
+      <span title="近看解剖">🔬</span>
+    </div>
+
+    <aside id="info"><!-- 由 app.js 填入 --></aside>
+  </section>
+
+  <script src="data.js?v=3"></script>
+  <script src="scenes.js?v=3"></script>
+  <script src="app.js?v=3"></script>
+</body>
+</html>
