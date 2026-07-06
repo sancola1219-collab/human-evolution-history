@@ -60,6 +60,13 @@
     ctx.moveTo(ax + nx * wA * 0.5 * lit, ay + ny * wA * 0.5 * lit);
     ctx.lineTo(bx + nx * wB * 0.5 * lit, by + ny * wB * 0.5 * lit); ctx.stroke();
     ctx.restore();
+    // 邊緣光（逆光暖色輪廓，貼受光側最外緣）——增添空氣感與立體
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = 'rgba(255,214,150,0.9)'; ctx.lineWidth = Math.max(1, wid * 0.10);
+    ctx.beginPath();
+    ctx.moveTo(ax + nx * wA * 0.94 * lit, ay + ny * wA * 0.94 * lit);
+    ctx.lineTo(bx + nx * wB * 0.94 * lit, by + ny * wB * 0.94 * lit); ctx.stroke();
+    ctx.restore();
   }
 
   /* 體毛紋理：在區域內鋪短而細的毛（僅作表面質感，非放射長刺） */
@@ -179,9 +186,17 @@
     const handX = shoulderX + H * 0.09 + lean * H * 0.16, handY = shoulderY + H * 0.31 + swing;
     limb(ctx, shoulderX, shoulderY + H * 0.01, elbowX, elbowY, H * 0.05, H * 0.042, skin, lit);
     limb(ctx, elbowX, elbowY, handX, handY, H * 0.042, H * 0.032, skin, lit);
-    // 手掌
-    ctx.fillStyle = shade(skin, 0.05);
-    ctx.beginPath(); ctx.ellipse(handX, handY, H * 0.03, H * 0.038, 0.4, 0, Math.PI * 2); ctx.fill();
+    // 手掌（有拇指與指節暗示）
+    ctx.save(); ctx.translate(handX, handY);
+    const hg = ctx.createRadialGradient(-H * 0.01, -H * 0.01, H * 0.005, 0, 0, H * 0.05);
+    hg.addColorStop(0, shade(skin, 0.12)); hg.addColorStop(1, shade(skin, -0.15));
+    ctx.fillStyle = hg;
+    ctx.beginPath(); ctx.ellipse(0, 0, H * 0.032, H * 0.042, 0.35, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = shade(skin, 0.08); ctx.lineWidth = H * 0.018; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-H * 0.01, H * 0.02); ctx.lineTo(H * 0.03, H * 0.04); ctx.stroke(); // 拇指
+    ctx.strokeStyle = shade(skin, -0.28); ctx.lineWidth = H * 0.006;
+    ctx.beginPath(); ctx.moveTo(-H * 0.015, -H * 0.02); ctx.lineTo(H * 0.02, -H * 0.005); ctx.stroke(); // 指縫
+    ctx.restore();
     // 前臂體毛
     furPatch(ctx, (shoulderX + elbowX) / 2, (shoulderY + elbowY) / 2, H * 0.04, 0.5, fig.fur * 0.6, hairCol);
 
@@ -357,6 +372,100 @@
     ctx.fillStyle = '#fff8ea'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
   }
 
+  /* 主角：置中（避開右側教學面板）+ 放大成畫面焦點。gy=腳底 y。 */
+  const FOCAL = 0.42; // 主角水平位置（畫面可視區中央，右側留給面板）
+  function hero(ctx, w, h, stage, t, gy, extra) {
+    const s = h / 250 * (extra && extra.scale || 1); // 依畫布高自動放大 → 焦點
+    drawFigure(ctx, w * FOCAL, gy, s, stage.figure, t);
+  }
+
+  // 飄動雲層
+  function drawClouds(ctx, w, h, t, tint, alpha) {
+    ctx.save(); ctx.fillStyle = tint || '#ffffff';
+    for (let i = 0; i < 5; i++) {
+      const cx = (((i * 0.27 + t * 0.004) % 1.3) - 0.15) * w;
+      const cy = h * (0.10 + (i % 3) * 0.06), sc = 0.7 + rand(i) * 0.7;
+      ctx.globalAlpha = (alpha || 0.14) * (0.7 + rand(i * 2) * 0.5);
+      for (let j = 0; j < 5; j++) {
+        ctx.beginPath();
+        ctx.ellipse(cx + j * 34 * sc, cy + Math.sin(j * 1.3) * 7 * sc, (44 - j * 4) * sc, (17 - Math.abs(j - 2) * 2) * sc, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  // 遠飛鳥群（V 形剪影）
+  function drawBirds(ctx, w, h, t) {
+    ctx.save(); ctx.strokeStyle = 'rgba(30,22,16,0.5)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+    for (let i = 0; i < 7; i++) {
+      const x = (((i * 0.14 + t * 0.03) % 1.15) - 0.07) * w;
+      const y = h * (0.14 + rand(i) * 0.12), sz = 4 + rand(i * 2) * 4;
+      const fl = Math.sin(t * 5 + i) * sz * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(x - sz, y); ctx.quadraticCurveTo(x - sz * 0.4, y - sz * 0.6 - fl, x, y);
+      ctx.quadraticCurveTo(x + sz * 0.4, y - sz * 0.6 - fl, x + sz, y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 前景灌木叢（多塊柔和樹葉 + 陰影）
+  function drawBush(ctx, x, gy, s, leaf) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.ellipse(x, gy + 2 * s, 30 * s, 7 * s, 0, 0, Math.PI * 2); ctx.fill();
+    const clumps = [[0, -14, 20], [-16, -8, 15], [16, -9, 15], [-6, -22, 13], [8, -20, 12]];
+    for (const [dx, dy, r] of clumps) {
+      const cx = x + dx * s, cy = gy + dy * s, rr = r * s;
+      const g = ctx.createRadialGradient(cx - rr * 0.3, cy - rr * 0.4, rr * 0.2, cx, cy, rr);
+      g.addColorStop(0, shade(leaf, 0.16)); g.addColorStop(1, shade(leaf, -0.28));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // 石塊（有受光面/背光面）
+  function drawRock(ctx, x, gy, s, base) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath(); ctx.ellipse(x, gy + 2 * s, 22 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
+    const g = ctx.createLinearGradient(x - 18 * s, gy - 20 * s, x + 18 * s, gy);
+    g.addColorStop(0, shade(base, 0.16)); g.addColorStop(1, shade(base, -0.3));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x - 20 * s, gy); ctx.lineTo(x - 12 * s, gy - 16 * s); ctx.lineTo(x + 4 * s, gy - 20 * s);
+    ctx.lineTo(x + 18 * s, gy - 10 * s); ctx.lineTo(x + 21 * s, gy); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  // 漂浮塵光（暖色微粒，逆光時的空氣感）
+  function drawDust(ctx, w, h, t) {
+    ctx.save(); ctx.fillStyle = 'rgba(255,240,200,0.7)';
+    for (let i = 0; i < 40; i++) {
+      const x = (rand(i) * w + Math.sin(t * 0.3 + i) * 20) % w;
+      const y = (rand(i * 2) * h * 0.8 + t * 6 * (0.3 + rand(i * 3))) % (h * 0.8);
+      ctx.globalAlpha = 0.15 + rand(i * 5) * 0.35;
+      ctx.beginPath(); ctx.arc(x, y, 0.8 + rand(i * 7) * 1.4, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // 晨昏光束（從太陽方向灑下的柔光錐）
+  function drawGodRays(ctx, sx, sy, w, h) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 6; i++) {
+      const a = 0.5 + i * 0.22 + rand(i) * 0.1;
+      const len = h * 1.1, wd = 30 + rand(i * 2) * 60;
+      const ex = sx + Math.cos(a) * len, ey = sy + Math.sin(a) * len;
+      const g = ctx.createLinearGradient(sx, sy, ex, ey);
+      g.addColorStop(0, 'rgba(255,230,170,0.10)'); g.addColorStop(1, 'rgba(255,230,170,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(sx, sy);
+      ctx.lineTo(ex - wd, ey); ctx.lineTo(ex + wd, ey); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+
   // 大氣遠山（低對比、偏冷、越遠越淡）
   function ridge(ctx, w, baseY, amp, col, seedOff) {
     ctx.beginPath(); ctx.moveTo(0, baseY);
@@ -514,113 +623,138 @@
     lakeforest(ctx, w, h, stage, t) {
       const gy = h * 0.72;
       ctx.fillStyle = skyGradient(ctx, w, h, stage.palette.sky); ctx.fillRect(0, 0, w, h);
-      drawSun(ctx, w * 0.74, h * 0.30, 30, '#ffd98a');
+      drawSun(ctx, w * 0.78, h * 0.26, 30, '#ffd98a');
+      drawGodRays(ctx, w * 0.78, h * 0.26, w, h);
+      drawClouds(ctx, w, h, t, '#ffe6c0', 0.13);
+      drawBirds(ctx, w, h, t);
       ridge(ctx, w, gy - 30, 70, 'rgba(90,72,60,0.45)', 1);
       ridge(ctx, w, gy - 6, 40, 'rgba(70,56,44,0.6)', 3);
-      // 湖
       const lake = ctx.createLinearGradient(0, gy, 0, h); lake.addColorStop(0, '#7a6446'); lake.addColorStop(1, '#3f2f20');
       ctx.fillStyle = lake; ctx.fillRect(0, gy, w, h - gy);
       ctx.fillStyle = 'rgba(255,225,160,0.18)';
-      for (let i = 0; i < 7; i++) ctx.fillRect(w * 0.45, gy + 8 + i * 9 + Math.sin(t + i) * 2, w * 0.45, 2);
-      for (let i = 0; i < 4; i++) drawTree(ctx, w * (0.08 + i * 0.07), gy + 2, 0.8 + rand(i) * 0.3, '#4a5e2c');
-      drawFigure(ctx, w * 0.6, gy + 4, 1.15, stage.figure, t);
+      for (let i = 0; i < 7; i++) ctx.fillRect(w * 0.42, gy + 8 + i * 9 + Math.sin(t + i) * 2, w * 0.5, 2);
+      drawTree(ctx, w * 0.1, gy + 2, 1.1, '#4a5e2c'); drawTree(ctx, w * 0.2, gy + 4, 0.85, '#41541f');
+      drawTree(ctx, w * 0.82, gy + 4, 1.0, '#4a5e2c'); drawBush(ctx, w * 0.72, gy + 8, 1.1, '#3f5622');
+      hero(ctx, w, h, stage, t, gy + 4);
+      drawBush(ctx, w * 0.14, gy + 12, 1.4, '#37471c');
+      drawDust(ctx, w, h, t);
     },
     woodland(ctx, w, h, stage, t) {
       const gy = h * 0.74;
       ctx.fillStyle = skyGradient(ctx, w, h, stage.palette.sky); ctx.fillRect(0, 0, w, h);
-      drawSun(ctx, w * 0.22, h * 0.22, 24, '#eaf2c0');
+      drawSun(ctx, w * 0.2, h * 0.2, 24, '#eaf2c0');
+      drawClouds(ctx, w, h, t, '#f4ffd8', 0.12); drawBirds(ctx, w, h, t);
       ridge(ctx, w, gy, 60, 'rgba(70,90,50,0.4)', 2);
       drawGround(ctx, gy, w, h, '#5a7238', '#33461f');
-      for (let i = 0; i < 6; i++) drawTree(ctx, w * (0.1 + i * 0.15), gy + 6, 1 + rand(i) * 0.5, '#4f6b2c');
-      drawGrass(ctx, gy + 24, w, '#6a8a3a', t, 70);
-      drawFigure(ctx, w * 0.54, gy + 12, 1.1, stage.figure, t);
+      drawTree(ctx, w * 0.1, gy + 6, 1.3, '#4f6b2c'); drawTree(ctx, w * 0.24, gy + 8, 1.0, '#456024');
+      drawTree(ctx, w * 0.8, gy + 6, 1.25, '#4f6b2c'); drawTree(ctx, w * 0.9, gy + 10, 0.95, '#3f5820');
+      drawGrass(ctx, gy + 24, w, '#6a8a3a', t, 80);
+      hero(ctx, w, h, stage, t, gy + 12);
+      drawBush(ctx, w * 0.16, gy + 16, 1.3, '#3c5620'); drawBush(ctx, w * 0.7, gy + 14, 1.1, '#43602a');
+      drawGrass(ctx, gy + 40, w, '#7a9a44', t, 40);
     },
     savanna(ctx, w, h, stage, t) {
       const gy = h * 0.7;
       ctx.fillStyle = skyGradient(ctx, w, h, stage.palette.sky); ctx.fillRect(0, 0, w, h);
-      drawSun(ctx, w * 0.72, h * 0.26, 34, '#ffcf7a');
-      ridge(ctx, w, gy - 20, 90, 'rgba(120,84,52,0.4)', 4); // 遠火山群
+      drawSun(ctx, w * 0.76, h * 0.22, 34, '#ffcf7a');
+      drawGodRays(ctx, w * 0.76, h * 0.22, w, h);
+      drawClouds(ctx, w, h, t, '#ffdca0', 0.14); drawBirds(ctx, w, h, t);
+      ridge(ctx, w, gy - 20, 90, 'rgba(120,84,52,0.4)', 4);
       drawGround(ctx, gy, w, h, '#b39a52', '#5f4e26');
-      drawAcacia(ctx, w * 0.2, gy + 6, 1.4);
-      drawAcacia(ctx, w * 0.83, gy + 10, 1.05);
-      drawGrass(ctx, gy + 32, w, '#a68f4a', t, 100);
-      drawFigure(ctx, w * 0.5, gy + 22, 1.12, stage.figure, t);
+      drawAcacia(ctx, w * 0.16, gy + 6, 1.5); drawAcacia(ctx, w * 0.86, gy + 10, 1.1);
+      drawGrass(ctx, gy + 30, w, '#a68f4a', t, 110);
+      drawRock(ctx, w * 0.72, gy + 24, 1.0, '#9a8b6a');
+      hero(ctx, w, h, stage, t, gy + 22);
+      drawGrass(ctx, gy + 52, w, '#b8a052', t, 50);
+      drawBush(ctx, w * 0.14, gy + 30, 1.2, '#6a6a34');
+      drawDust(ctx, w, h, t);
     },
     savanna_tools(ctx, w, h, stage, t) {
       SCENES.savanna(ctx, w, h, stage, t);
       const gy = h * 0.7;
       ctx.fillStyle = '#8f867c';
-      for (let i = 0; i < 5; i++) { const x = w * 0.6 + i * 11, y = gy + 40 + (i % 2) * 5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 9, y - 4); ctx.lineTo(x + 10, y + 4); ctx.closePath(); ctx.fill(); }
+      for (let i = 0; i < 5; i++) { const x = w * 0.3 + i * 12, y = gy + 46 + (i % 2) * 5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 10, y - 5); ctx.lineTo(x + 11, y + 4); ctx.closePath(); ctx.fill(); }
     },
     firecamp(ctx, w, h, stage, t) {
       const gy = h * 0.72;
       ctx.fillStyle = skyGradient(ctx, w, h, stage.palette.sky); ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = 'rgba(255,240,200,0.7)';
-      for (let i = 0; i < 45; i++) ctx.fillRect(rand(i) * w, rand(i * 2) * h * 0.4, 1.6, 1.6);
-      ridge(ctx, w, gy, 50, 'rgba(20,14,10,0.9)', 2);
+      ctx.fillStyle = 'rgba(255,240,200,0.75)';
+      for (let i = 0; i < 55; i++) { const tw = 0.5 + 0.5 * Math.sin(t * 2 + i); ctx.globalAlpha = 0.4 + tw * 0.5; ctx.fillRect(rand(i) * w, rand(i * 2) * h * 0.42, 1.6, 1.6); }
+      ctx.globalAlpha = 1;
+      drawClouds(ctx, w, h, t, '#5a4636', 0.18);
+      ridge(ctx, w, gy, 50, 'rgba(18,12,8,0.92)', 2);
       const gr = ctx.createLinearGradient(0, gy, 0, h); gr.addColorStop(0, '#2a1c12'); gr.addColorStop(1, '#160f0a');
       ctx.fillStyle = gr; ctx.fillRect(0, gy, w, h - gy);
-      for (let i = 0; i < 5; i++) drawConifer(ctx, w * (0.05 + i * 0.22), gy + 4, 1.1, '#1f2712');
-      drawFire(ctx, w * 0.5, gy + 34, 1.4, t);
-      drawFigure(ctx, w * 0.34, gy + 26, 0.98, stage.figure, t + 1);
-      drawFigure(ctx, w * 0.66, gy + 26, 1.02, { ...stage.figure, tool: 'none' }, t + 2.3);
+      drawConifer(ctx, w * 0.08, gy + 4, 1.2, '#1f2712'); drawConifer(ctx, w * 0.9, gy + 4, 1.3, '#1a2210');
+      // 主角在中央，營火在其側前方（暖光打在人身上）
+      hero(ctx, w, h, stage, t, gy + 20, { scale: 0.96 });
+      drawFire(ctx, w * 0.6, gy + 34, 1.5, t);
+      drawFigure(ctx, w * 0.8, gy + 24, h / 320, { ...stage.figure, tool: 'none' }, t + 2.3);
     },
     coldforest(ctx, w, h, stage, t) {
       const gy = h * 0.74;
       ctx.fillStyle = skyGradient(ctx, w, h, stage.palette.sky); ctx.fillRect(0, 0, w, h);
-      drawSnowMountain(ctx, w * 0.68, gy, w * 0.4, h * 0.42, 'rgba(96,116,126,0.55)');
+      drawClouds(ctx, w, h, t, '#c8d4dc', 0.2);
+      drawSnowMountain(ctx, w * 0.7, gy, w * 0.42, h * 0.44, 'rgba(96,116,126,0.55)');
       drawGround(ctx, gy, w, h, '#4a5a42', '#2c3826');
-      for (let i = 0; i < 8; i++) drawConifer(ctx, w * (0.06 + i * 0.12), gy + 6, 1.1 + rand(i) * 0.4, '#2f4a30');
-      // 遠處獵物
-      ctx.fillStyle = 'rgba(70,52,34,0.85)'; ctx.beginPath(); ctx.ellipse(w * 0.82, gy + 20, 18, 10, 0, 0, Math.PI * 2); ctx.fill();
-      drawFigure(ctx, w * 0.42, gy + 16, 1.12, stage.figure, t);
+      drawConifer(ctx, w * 0.08, gy + 6, 1.4, '#2f4a30'); drawConifer(ctx, w * 0.18, gy + 8, 1.1, '#284226');
+      drawConifer(ctx, w * 0.84, gy + 6, 1.35, '#2f4a30'); drawConifer(ctx, w * 0.92, gy + 9, 1.05, '#243c22');
+      ctx.fillStyle = 'rgba(70,52,34,0.85)'; ctx.beginPath(); ctx.ellipse(w * 0.86, gy + 22, 20, 11, 0, 0, Math.PI * 2); ctx.fill();
+      hero(ctx, w, h, stage, t, gy + 16);
+      drawBush(ctx, w * 0.16, gy + 18, 1.3, '#33482a'); drawRock(ctx, w * 0.72, gy + 20, 1.1, '#7a8078');
     },
     iceage(ctx, w, h, stage, t) {
       const gy = h * 0.76;
       ctx.fillStyle = skyGradient(ctx, w, h, stage.palette.sky); ctx.fillRect(0, 0, w, h);
-      drawSnowMountain(ctx, w * 0.24, gy, w * 0.42, h * 0.46, 'rgba(150,166,182,0.7)');
-      drawSnowMountain(ctx, w * 0.76, gy, w * 0.36, h * 0.4, 'rgba(132,152,172,0.6)');
+      drawClouds(ctx, w, h, t, '#dfe8ef', 0.22);
+      drawSnowMountain(ctx, w * 0.2, gy, w * 0.44, h * 0.48, 'rgba(150,166,182,0.7)');
+      drawSnowMountain(ctx, w * 0.82, gy, w * 0.38, h * 0.42, 'rgba(132,152,172,0.6)');
       const snow = ctx.createLinearGradient(0, gy, 0, h); snow.addColorStop(0, '#eaf1f6'); snow.addColorStop(1, '#b4c6d2');
       ctx.fillStyle = snow; ctx.fillRect(0, gy, w, h - gy);
-      drawMammoth(ctx, w * 0.78, gy + 26, 1.05);
-      drawFigure(ctx, w * 0.4, gy + 18, 1.08, stage.figure, t);
+      drawMammoth(ctx, w * 0.82, gy + 26, 1.1);
+      drawRock(ctx, w * 0.16, gy + 14, 1.2, '#9aa6b0');
+      hero(ctx, w, h, stage, t, gy + 16);
       drawSnow(ctx, w, h, t);
     },
     caveart(ctx, w, h, stage, t) {
-      const rock = ctx.createRadialGradient(w * 0.5, h * 0.55, 40, w * 0.5, h * 0.5, w * 0.75);
+      const rock = ctx.createRadialGradient(w * 0.42, h * 0.55, 40, w * 0.42, h * 0.5, w * 0.8);
       rock.addColorStop(0, '#7a5636'); rock.addColorStop(1, '#241812');
       ctx.fillStyle = rock; ctx.fillRect(0, 0, w, h);
       ctx.save(); ctx.globalAlpha = 0.12;
-      for (let i = 0; i < 60; i++) { ctx.fillStyle = i % 2 ? '#000' : '#c98'; ctx.fillRect(rand(i) * w, rand(i * 2) * h, 3, 3); }
+      for (let i = 0; i < 70; i++) { ctx.fillStyle = i % 2 ? '#000' : '#c98'; ctx.fillRect(rand(i) * w, rand(i * 2) * h, 3, 3); }
       ctx.restore();
-      drawAurochs(ctx, w * 0.33, h * 0.4, 1.25, 'rgba(150,52,30,0.92)');
-      drawAurochs(ctx, w * 0.63, h * 0.5, 0.82, 'rgba(34,22,16,0.88)');
-      drawHandprint(ctx, w * 0.19, h * 0.3, 1.5, 'rgba(180,72,42,0.82)');
-      drawHandprint(ctx, w * 0.82, h * 0.34, 1.15, 'rgba(40,30,25,0.78)');
-      const gx = w * 0.16 + Math.sin(t) * 8;
-      const glow = ctx.createRadialGradient(gx, h * 0.8, 20, gx, h * 0.7, w * 0.55);
-      glow.addColorStop(0, 'rgba(255,180,90,0.32)'); glow.addColorStop(1, 'rgba(0,0,0,0.45)');
+      // 壁畫排在人物兩側/上方
+      drawAurochs(ctx, w * 0.2, h * 0.34, 1.2, 'rgba(150,52,30,0.92)');
+      drawAurochs(ctx, w * 0.66, h * 0.34, 0.9, 'rgba(34,22,16,0.88)');
+      drawHandprint(ctx, w * 0.12, h * 0.55, 1.5, 'rgba(180,72,42,0.82)');
+      drawHandprint(ctx, w * 0.68, h * 0.6, 1.2, 'rgba(40,30,25,0.78)');
+      const gx = w * 0.72 + Math.sin(t) * 8;
+      const glow = ctx.createRadialGradient(gx, h * 0.8, 20, gx, h * 0.7, w * 0.6);
+      glow.addColorStop(0, 'rgba(255,180,90,0.32)'); glow.addColorStop(1, 'rgba(0,0,0,0.5)');
       ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
-      drawFigure(ctx, w * 0.5, h * 0.9, 1.2, stage.figure, t);
-      drawFire(ctx, w * 0.16, h * 0.88, 0.95, t);
+      hero(ctx, w, h, stage, t, h * 0.94, { scale: 0.92 });
+      drawFire(ctx, w * 0.74, h * 0.9, 1.0, t);
+      drawDust(ctx, w, h, t);
     },
     farmland(ctx, w, h, stage, t) {
       const gy = h * 0.62;
       ctx.fillStyle = skyGradient(ctx, w, h, stage.palette.sky); ctx.fillRect(0, 0, w, h);
-      drawSun(ctx, w * 0.8, h * 0.22, 30, '#fff0c0');
+      drawSun(ctx, w * 0.82, h * 0.2, 30, '#fff0c0');
+      drawClouds(ctx, w, h, t, '#ffffff', 0.16); drawBirds(ctx, w, h, t);
       ridge(ctx, w, gy, 40, 'rgba(120,150,90,0.4)', 2);
       const soil = ctx.createLinearGradient(0, gy, 0, h); soil.addColorStop(0, '#9c7c3c'); soil.addColorStop(1, '#6a5220');
       ctx.fillStyle = soil; ctx.fillRect(0, gy, w, h - gy);
       ctx.strokeStyle = 'rgba(60,40,20,0.35)'; ctx.lineWidth = 2;
       for (let i = 1; i < 9; i++) { ctx.beginPath(); ctx.moveTo(0, gy + i * (h - gy) / 9); ctx.lineTo(w, gy + i * (h - gy) / 9); ctx.stroke(); }
       ctx.strokeStyle = '#cbab48'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-      for (let i = 0; i < 130; i++) { const x = rand(i) * w, yy = gy + 12 + rand(i * 2) * (h - gy - 24); const sw = Math.sin(t + i) * 2; ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + sw, yy - 13); ctx.stroke(); }
-      // 小屋（漸層+屋頂陰影）
-      const hutX = w * 0.13;
-      const hg = ctx.createLinearGradient(hutX, 0, hutX + 50, 0); hg.addColorStop(0, '#8a6a44'); hg.addColorStop(1, '#5f4528');
-      ctx.fillStyle = hg; ctx.fillRect(hutX, gy - 36, 50, 36);
-      ctx.fillStyle = '#4e3320'; ctx.beginPath(); ctx.moveTo(hutX - 8, gy - 36); ctx.lineTo(hutX + 25, gy - 56); ctx.lineTo(hutX + 58, gy - 36); ctx.closePath(); ctx.fill();
-      drawFigure(ctx, w * 0.55, gy + 32, 1.12, stage.figure, t);
+      for (let i = 0; i < 140; i++) { const x = rand(i) * w, yy = gy + 12 + rand(i * 2) * (h - gy - 24); const sw = Math.sin(t + i) * 2; ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + sw, yy - 14); ctx.stroke(); }
+      // 小屋（左）
+      const hutX = w * 0.1;
+      const hg = ctx.createLinearGradient(hutX, 0, hutX + 54, 0); hg.addColorStop(0, '#8a6a44'); hg.addColorStop(1, '#5f4528');
+      ctx.fillStyle = hg; ctx.fillRect(hutX, gy - 40, 54, 40);
+      ctx.fillStyle = '#4e3320'; ctx.beginPath(); ctx.moveTo(hutX - 8, gy - 40); ctx.lineTo(hutX + 27, gy - 62); ctx.lineTo(hutX + 62, gy - 40); ctx.closePath(); ctx.fill();
+      hero(ctx, w, h, stage, t, gy + 30);
+      drawDust(ctx, w, h, t);
     }
   };
 
@@ -631,7 +765,10 @@
     const ctx = canvas.getContext('2d');
     this.canvas = canvas; this.ctx = ctx;
     this.draw = function (stage, t, zoom, cam) {
-      const w = canvas.width, h = canvas.height;
+      // 用 CSS 像素（context 已被 app.js 依 dpr 做 setTransform）；
+      // 離屏測試 canvas 沒有 _cssW，退回 buffer 尺寸。⚠️ 別直接用 canvas.width，
+      // 否則 dpr>1 的高解析度螢幕會把場景畫成兩倍大、只剩左上角。
+      const w = canvas._cssW || canvas.width, h = canvas._cssH || canvas.height;
       ctx.clearRect(0, 0, w, h);
       ctx.save();
       if (zoom && zoom > 1.001) {
